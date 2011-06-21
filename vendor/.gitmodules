@@ -1,0 +1,6 @@
+[submodule "swiftmailer"]
+	path = swiftmailer
+	url = git://github.com/swiftmailer/swiftmailer.git
+[submodule "twig"]
+	path = twig
+	url = https://github.com/fabpot/Twig
