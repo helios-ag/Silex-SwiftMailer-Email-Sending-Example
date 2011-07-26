@@ -2,27 +2,46 @@
 
 require_once __DIR__.'/../vendor/Silex/silex.phar';
 
-require_once __DIR__.'/../vendor/swiftmailer/lib/swift_required.php';
 /**  Bootstraping */
 
 $app = new Silex\Application;
 
-$app->register(new \Silex\Extension\TwigExtension(), array(
-    'twig.path' => __DIR__.'/templates',
+use Silex\Extension\SymfonyBridgesExtension;
+use Silex\Extension\TranslationExtension;
+use Silex\Extension\FormExtension;
+use Silex\Extension\TwigExtension;
+use Silex\Extension\SwiftmailerExtension;
+
+$app->register(new TwigExtension(), array(
+    'twig.path'       => array(
+	  __DIR__.'/templates',
+	  __DIR__.'/../vendor/symfony/src/Symfony/Bridge/Twig/Resources/views/Form'
+	),
     'twig.class_path' => __DIR__.'/../vendor/Twig/lib',
 ));
 
-$app->register(new \Silex\Extension\SymfonyBridgesExtension(), array(
+$app->register(new SymfonyBridgesExtension(), array(
    'symfony_bridges.class_path' => __DIR__ . '/../vendor/symfony/src'
 ));
 
-$app->register(new \Silex\Extension\FormExtension(), array(
+$app->register(new FormExtension(), array(
     'form.class_path' => __DIR__ . '/../vendor/symfony/src'
 ));
 
-$app->register(new \Silex\Extension\TranslationExtension(), array(
+$app->register(new TranslationExtension(), array(
     'translation.class_path' => __DIR__ . '/../vendor/symfony/src',
     'translator.messages' => array()
+));
+
+$app->register(new SwiftmailerExtension(), array(
+     'swiftmailer.options' => array(
+            'host'       => 'smtp.gmail.com',
+            'port'       => 465,
+            'username'   => 'silex.swiftmailer@gmail.com',
+            'password'   => 'simplepassword',
+            'encryption' => 'ssl',
+            'auth_mode'  => 'login'),
+      'swiftmailer.class_path' => __DIR__.'/../vendor/swiftmailer/lib/classes'
 ));
 
 /** App definition */
@@ -53,24 +72,16 @@ $app->match('/', function() use ($app) {
             $name        = $data['name'];
             
             $subject = "Message from ".$name;
-                        $message = \Swift_Message::newInstance()
-                        ->setSubject('Hello!')
-                        ->setFrom(array('silex.swiftmailer@gmail.com'))     //replace with your own
-                        ->setTo(array('silex.swiftmailer@gmail.com'))       //replace with your own
-                        ->setBody($app['twig']->render('email.html.twig',   // email template
-                                        array('name'      => $name,
-                                              'message'   => $messagebody,                                             
-                                            )),'text/html');
-
-                $transport = \Swift_SmtpTransport::newInstance('smtp.gmail.com',25)
-                        ->setUsername('silex.swiftmailer@gmail.com')       //replace with your own
-                        ->setPassword('simplepassword')   // replace with your own, but this account is working
-                        ->setEncryption('ssl')            // this settings required by gmail
-                        ->setPort('465');                 // don't forget to enable ssl support in php
-
-                $mailer = \Swift_Mailer::newInstance($transport);
-                $mailer->send($message);               
-                               
+            
+            $app['mailer']->send($app['mailer']
+				    ->createMessage()
+				    ->setFrom('silex.swiftmailer@gmail.com') // replace with your own
+				    ->setTo('silex.swiftmailer@gmail.com')   // replace with email recipient
+				    ->setSubject($subject)
+				    ->setBody($app['twig']->render('email.html.twig',   // email template
+                                                array('name'      => $name,
+                                                      'message'   => $messagebody,
+                                                    )),'text/html'));
         }
         return $app['twig']->render('index.html.twig', array(
                                    'message' => 'Message Sent',
@@ -84,6 +95,5 @@ $app->match('/', function() use ($app) {
         )
             );    
 }, "GET|POST");
-
 
 return $app;
